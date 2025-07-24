@@ -1,0 +1,64 @@
+.login-bg {
+    background-color: #FFFFFF;
+    background-image:url('../images/login-bg.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 100vh;
+}
+.signup-bg {
+    background-color: #FFFFFF;
+    background-image:url('../images/signup-bg2.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 100vh;
+}
+.login-inner {
+    background-color: #FFFFFF;
+   
+}
+.log-hd {
+    font-size: 30px;
+    font-weight: Semi-bold;
+    color: #171725;
+}
+.quote {
+    width: 570px;
+    margin-block-start: 160px;
+}
+.quote p q {
+    font-size: 18px;
+    font-weight: 620;
+    color: #3A5AFF;
+    
+}
+.quote p span {
+    display: block;          /* makes the span behave like a block */
+    text-align: right;       /* aligns the text to the right inside the span */
+    width: 100%;  
+}
+hr {
+    width: 170px;
+}
+.sign-op section {
+    height: 43px;
+    width: 190px;
+    border: 2px solid #E0E2E9;
+    border-radius: 8px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;   /* centers horizontally */
+    align-items: center;
+     
+}
+
+@media screen and (max-width: 576px) {
+  .sg-up {
+    display: none !important;
+  }
+  .lg-in {
+    display: none !important;
+  }
+}
+
