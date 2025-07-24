@@ -1,7 +1,9 @@
-from fastapi import Depends, FastAPI, HTTPException, status, UploadFile, File, Form
+from fastapi import Depends, FastAPI, HTTPException, status, UploadFile,Request, Body, File, Form
 from pydantic import EmailStr
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from starlette.responses import RedirectResponse
 from typing import Optional
 from datetime import datetime, date, timedelta
 from fastapi.security import OAuth2PasswordRequestForm
@@ -9,15 +11,19 @@ from sqlalchemy.orm import Session
 from app.database import Base, SessionLocal, engine
 from app import schemas, crud, model
 from app.dependencies import get_db
-from app.auth import pwd_context, oauth2_scheme, authenticate_user, create_access_token, get_current_user 
+from app.auth import pwd_context, oauth2_scheme, authenticate_user, create_access_token, get_current_user
 import os
 from my_logging.logger import get_logger
+from app.middleware import setup_middleware
 
 Base.metadata.create_all(bind=engine)
 
 UPLOAD_DIR = "uploads"
 
 app = FastAPI()
+
+# Setup middleware
+setup_middleware(app) 
 
 # Initialize logger
 logger = get_logger(__name__)
@@ -26,17 +32,37 @@ logger = get_logger(__name__)
 os.makedirs("uploads", exist_ok=True)
 
 # Mount static files directory for serving uploaded files
-app.mount("/static", StaticFiles(directory="uploads"), name="static")
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Mount static files directory for serving CSS and JS files
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# Mount templates directory for rendering HTML pages
+templates = Jinja2Templates(directory="app/templates")
 
-@app.get("/")
-async def home():
-    logger.info("Home endpoint accessed")
-    return {"message": "Welcome To The Assignment Submission System"}
+@app.get("/", response_class=HTMLResponse)
+async def read_home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+# Serve the signup page
+@app.get("/signup", response_class=HTMLResponse)
+async def signup_page(request: Request):
+    return templates.TemplateResponse("signup.html", {"request": request})
+# Serve the login page
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+# @app.get("/")
+# async def home():
+#     logger.info("Home endpoint accessed")
+#     return {"message": "Welcome To The Assignment Submission System"}
 
 # User management endpoints
 #register a new user
 @app.post("/signup/", response_model=schemas.UserResponse)
-async def signUp(user: schemas.UserCreate, db: Session = Depends(get_db)):
+async def signUp(
+    user: schemas.UserCreate= Body(...), 
+    db: Session = Depends(get_db)
+    ):
     check_email = crud.check_email(db, email = user.email)
     if check_email:
         raise HTTPException(status_code=400, detail="Email Has been used")
@@ -47,6 +73,47 @@ async def signUp(user: schemas.UserCreate, db: Session = Depends(get_db)):
     new_user = crud.Sign_up(db=db, user=user, hashed_password = hashed_password)
     logger.info(f"New user created: {new_user.username}")
     return new_user
+
+
+# Serve the signup page Option 1
+# @app.post("/signup/")
+# async def signUp(
+#     full_name: str = Form(...),
+#     email: str = Form(...),
+#     username: str = Form(...),
+#     password: str = Form(...),
+#     role: str = Form(...), 
+#     db: Session = Depends(get_db)
+# ):
+#     # Check if email already exists
+#     check_email = crud.check_email(db, email=email)
+#     if check_email:
+#         raise HTTPException(status_code=400, detail="Email has already been used")
+    
+#     # Check if username already exists
+#     check_username = crud.check_username(db, username=username)
+#     if check_username:
+#         raise HTTPException(status_code=400, detail="Username is already taken")
+
+#     # Hash password
+#     hashed_password = pwd_context.hash(password)
+
+#     # Create a UserCreate schema instance manually
+#     user_data = schemas.UserCreate(
+#         full_name=full_name,
+#         email=email,
+#         username=username,
+#         password=password,
+#         role=role
+#     )
+
+#     # Create the user using the crud function
+#     new_user = crud.Sign_up(db=db, user=user_data, hashed_password=hashed_password)
+
+#     logger.info(f"New user created: {new_user.username}")
+#     return new_user
+
+
               
 # User Login
 @app.post("/login/")

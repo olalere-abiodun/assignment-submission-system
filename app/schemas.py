@@ -6,7 +6,6 @@ from datetime import datetime, date, timedelta
 class UserRole(str, Enum):
     STUDENT = "student"
     LECTURER = "lecturer"
-    ADMIN = "admin"
 
 class UserBase(BaseModel):
     username: str
