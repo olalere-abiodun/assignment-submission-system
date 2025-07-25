@@ -53,6 +53,7 @@ class CourseUpdate(BaseModel):
     description: Optional[str] = None
 
 class CourseResponse(BaseModel):
+    course_id: int
     course_name: str
     course_code: str
     description: Optional[str] = None
@@ -63,7 +64,10 @@ class EnrollResponse(BaseModel):
     username: str
     course_name: str
     course_code: str
-    lecturer_id: int
+    lecturer_name: str  
+
+    class Config:
+        orm_mode = True
 
 class AssignmentCreate(BaseModel):
     course_id: int

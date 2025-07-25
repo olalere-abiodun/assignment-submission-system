@@ -23,36 +23,38 @@
 </head>
 
 <body>
-<!-- Enroll Course Modal -->
-<div class="modal fade" id="enrollCourseModal" tabindex="-1" aria-labelledby="createCourseModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content rounded-4 shadow">
-      <div class="modal-header p-4 pb-2 border-bottom-0">
-        <h3 class="fw-bold mb-0 fs-5 mb-3" id="createCourseModalLabel">Enroll Course</h3>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-       <div class="modal-body p-4 pt-0">
-        <form>
-          <div class="mb-3">
-            <label for="course_title" class="form-label">Course Title</label>
-            <select class="form-select form-control-lg" aria-label="Default select example" id="course_title">
-              <option selected>Select Course Title</option>
+  <!-- Enroll Course Modal -->
+  <div class="modal fade" id="enrollCourseModal" tabindex="-1" aria-labelledby="createCourseModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content rounded-4 shadow">
+        <div class="modal-header p-4 pb-2 border-bottom-0">
+          <h3 class="fw-bold mb-0 fs-5 mb-3" id="createCourseModalLabel">Enroll Course</h3>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 pt-0">
+          <div id="form-messages" class="alert d-none" role="alert"></div>
+          <form id="enrollForm">
+            <div class="mb-3">
+              <label for="course_title" class="form-label">Course Title</label>
+              <select class="form-select form-control-lg" aria-label="Default select example" id="course_title">
+                <option selected disabled>Select Course Title</option>
 
-</select>
-          </div>
-          <div class="mb-3">
-            <label for="assignment_title" class="form-label">Course Code</label>
-            <input id="assignment_title" class="form-control form-control-lg" type="text" placeholder="Course Code">
-          </div>
-    
-          <div class="mb-3 text-end">
-            <button class="btn btn-primary px-4 me-md-2" type="submit">Enroll</button>
-          </div>
-        </form>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="course_code" class="form-label">Course Code</label>
+              <input id="course_code" class="form-control form-control-lg" type="text" placeholder="Course Code">
+            </div>
+
+            <div class="mb-3 text-end">
+              <button class="btn btn-primary px-4 me-md-2" type="submit">Enroll</button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
 
 
@@ -125,6 +127,9 @@
             aria-label="Close"></button>
         </div>
         <div class="offcanvas-body d-md-flex flex-column p-0 pt-lg-3 overflow-y-auto">
+          <div class="mx-auto mb-2 mb-md-0">
+            <p><span class="fw-bold">Welcome:</span> <span id="usernameholder" class="text-secondary"></span> </p>
+          </div>
           <ul class="nav flex-column">
             <li class="nav-item">
               <a class="nav-link d-flex align-items-center gap-2 " aria-current="page" href="index.html">
@@ -184,30 +189,30 @@
         </div>
       </div>
       <div class="container-fluid">
-        <table class="table">
-  <thead>
-    <tr>
-      <th scope="col">#</th>
-      <th scope="col">Course Title</th>
-      <th scope="col">Course Code</th>
-      <th scope="col">Lecturer</th>
-      <th scope="col">Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    <!-- <tr>
-      <th scope="row">1</th>
-      <td>Introduction to Programming</td>
-      <td>CS101</td>
-      <td>Dr. Smith</td>
-      <td>
-        <button class="btn btn-sm btn-primary">View</button>
-        <button class="btn btn-sm btn-danger">Unenroll</button>
-      </td>
+        <table class="table" id="enrolledCoursesTable">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Course Title</th>
+              <th scope="col">Course Code</th>
+              <th scope="col">Lecturer</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead id="enrolledCoursesBody">
+          <tbody>
+            <!-- <tr>
+              <th scope="row">1</th>
+              <td>Introduction to Programming</td>
+              <td>CS101</td>
+              <td>Dr. Smith</td>
+              <td>
+                <button class="btn btn-sm btn-primary">View</button>
+                <button class="btn btn-sm btn-danger">Unenroll</button>
+              </td>
     </tr> -->
 
 
-    </tbody>
+          </tbody>
 
 
       </div>
@@ -231,8 +236,47 @@
     crossorigin="anonymous"></script>
   <!-- jquery  -->
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-  <script src="../../static/scripts/theme.js"></script> 
+  <script src="/static/scripts/user-info.js"></script>
+  <script src="/static/scripts/load-course.js"></script>
+  <script src="../../static/scripts/theme.js"></script>
   <script src="../../static/scripts/index.js"></script>
+  <script>
+document.addEventListener("DOMContentLoaded", function () {
+  const enrolledTableBody = document.querySelector("#enrolledCoursesTable tbody");
+
+  const token = sessionStorage.getItem("token");
+
+  fetch("/users/me/enrollments", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+    .then((res) => {
+      if (!res.ok) throw new Error("Failed to fetch enrollments");
+      return res.json();
+    })
+    .then((data) => {
+      enrolledTableBody.innerHTML = ""; // clear any existing rows
+      data.forEach((course, index) => {
+        enrolledTableBody.innerHTML += `
+          <tr>
+            <th scope="row">${index + 1}</th>
+            <td>${course.course_name}</td>
+            <td>${course.course_code}</td>
+            <td>${course.lecturer_name}</td>
+            <td>
+              <button class="btn btn-sm btn-primary">View</button>
+              <button class="btn btn-sm btn-danger">Unenroll</button>
+            </td>
+          </tr>
+        `;
+      });
+    })
+    .catch((err) => console.error("Error loading enrollments:", err));
+});
+</script>
+
+
 </body>
 
 </html>

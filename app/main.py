@@ -15,6 +15,7 @@ from app.auth import pwd_context, oauth2_scheme, authenticate_user, create_acces
 import os
 from my_logging.logger import get_logger
 from app.middleware import setup_middleware
+from app.route import router as page_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -24,6 +25,8 @@ app = FastAPI()
 
 # Setup middleware
 setup_middleware(app) 
+
+
 
 # Initialize logger
 logger = get_logger(__name__)
@@ -36,19 +39,46 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # Mount static files directory for serving CSS and JS files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # Mount templates directory for rendering HTML pages
-templates = Jinja2Templates(directory="app/templates")
+# templates = Jinja2Templates(directory="app/templates")
 
-@app.get("/", response_class=HTMLResponse)
-async def read_home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-# Serve the signup page
-@app.get("/signup", response_class=HTMLResponse)
-async def signup_page(request: Request):
-    return templates.TemplateResponse("signup.html", {"request": request})
-# Serve the login page
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+app.include_router(page_router)
+
+# Serve the static pages start
+# @app.get("/", response_class=HTMLResponse)
+# async def read_home(request: Request):
+#     return templates.TemplateResponse("index.html", {"request": request})
+# # Serve the signup page
+# @app.get("/signup", response_class=HTMLResponse)
+# async def signup_page(request: Request):
+#     return templates.TemplateResponse("signup.html", {"request": request})
+# # Serve the login page
+# @app.get("/login", response_class=HTMLResponse)
+# async def login_page(request: Request):
+#     return templates.TemplateResponse("login.html", {"request": request})
+# @app.get("/lecturer/index.html", response_class=HTMLResponse)
+# async def serve_lecturer_dashboard(request: Request):
+#     return templates.TemplateResponse("lecturer/index.html", {"request": request})
+# @app.get("/student/index.html", response_class=HTMLResponse)
+# async def serve_student_dashboard(request: Request):
+#     return templates.TemplateResponse("student/index.html", {"request": request})
+
+# @app.get("/student/courses.html", response_class=HTMLResponse)
+# def get_courses(request: Request):
+#     return templates.TemplateResponse("student/courses.html", {"request": request})
+
+# @app.get("/student/assignments.html", response_class=HTMLResponse)
+# def get_assignments(request: Request):
+#     return templates.TemplateResponse("/student/assignments.html", {"request": request})
+
+# @app.get("/student/submission.html", response_class=HTMLResponse)
+# def get_submission(request: Request):
+#     return templates.TemplateResponse("submission.html", {"request": request})
+
+# @app.get("/student/profile.html", response_class=HTMLResponse)
+# def get_submission(request: Request):
+#     return templates.TemplateResponse("student/profile.html", {"request": request})
+
+# Serve the static page end
 
 
 # @app.get("/")
@@ -117,7 +147,7 @@ async def signUp(
               
 # User Login
 @app.post("/login/")
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -126,9 +156,35 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = create_access_token(data={"sub": user.username})
+
+
     logger.info(f"User logged in: {user.username}")
     # Return the access token and token type
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token,"token_type": "bearer",
+        "user": {
+            "username": user.username,
+            "full_name": user.full_name,
+            "role": user.role
+        }
+        }
+
+
+# get current user
+# @app.get("/me/")
+# async def get_user(request: Request):
+#     user = request.session.get("user")
+#     if not user:
+#         raise HTTPException(status_code=401, detail="Not authentication")
+#     return user
+
+@app.get("/me/")
+async def get_me(user: dict = Depends(get_current_user)):
+    return {
+        "username": user.username,
+        "full_name": user.full_name,
+        "role": user.role
+    }
+
 
 #Edit User
 @app.put("/users/me", response_model=schemas.UserResponse)
@@ -210,7 +266,6 @@ async def update_course_by_code(course_code: str, course_update: schemas.CourseU
     logger.info(f"Course updated: {updated_course.course_name} with code: {course_code} by lecturer ID: {current_user.user_id}")
     return updated_course
 
-
 # Enroll in a course
 @app.post("/courses/{course_id}/enroll", response_model=schemas.EnrollResponse)
 async def enroll_in_course(course_id: int, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
@@ -237,26 +292,50 @@ async def enroll_in_course(course_id: int, db: Session = Depends(get_db), curren
         course_code=course.course_code,
         lecturer_id=course.lecturer_id
     )
+
 # Get all enrollments for a user
+# @app.get("/users/me/enrollments", response_model=list[schemas.EnrollResponse])
+# async def get_user_enrollments(db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
+#     user_id = current_user.user_id
+#     enrollments = crud.get_enrollments_by_user_id(db=db, user_id=current_user.user_id)
+#     if not enrollments:
+#         raise HTTPException(status_code=404, detail="No enrollments found")
+    
+#     response = []
+#     for enrollment in enrollments:
+#         course = crud.get_course_by_id(db=db, course_id=enrollment.course_id)
+#         if course:
+#             response.append(schemas.EnrollResponse(
+#                 username=current_user.username,
+#                 course_name=course.course_name,
+#                 course_code=course.course_code,
+#                 lecturer_id=course.lecturer_id
+#             ))
+#     logger.info(f"Retrieved {len(response)} enrollments for user: {current_user.username}")
+#     return response
+
 @app.get("/users/me/enrollments", response_model=list[schemas.EnrollResponse])
 async def get_user_enrollments(db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
     user_id = current_user.user_id
-    enrollments = crud.get_enrollments_by_user_id(db=db, user_id=current_user.user_id)
+    enrollments = crud.get_enrollments_by_user_id(db=db, user_id=user_id)
     if not enrollments:
         raise HTTPException(status_code=404, detail="No enrollments found")
-    
+
     response = []
     for enrollment in enrollments:
         course = crud.get_course_by_id(db=db, course_id=enrollment.course_id)
         if course:
+            lecturer = db.query(model.Users).filter(model.Users.user_id == course.lecturer_id).first()
+            lecturer_name = lecturer.full_name if lecturer else "N/A"
             response.append(schemas.EnrollResponse(
                 username=current_user.username,
                 course_name=course.course_name,
                 course_code=course.course_code,
-                lecturer_id=course.lecturer_id
+                lecturer_name=lecturer_name
             ))
     logger.info(f"Retrieved {len(response)} enrollments for user: {current_user.username}")
     return response
+
 
 # Unenroll from a course
 @app.delete("/courses/{course_id}/unenroll", response_model=schemas.EnrollResponse)
